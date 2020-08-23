@@ -71,7 +71,7 @@ When the email service returns its reply to the function, the reply is then forw
 
 ### Access secrets through a server
 
-The previous example uses a cloud function created specifically to hide the secret. This makes sense for static web pages, but if the app already has its own server for database storage for example, then the mail request could be run through the same server
+The previous example uses a cloud function created specifically to hide the secret. This makes sense for static web pages, but if the app already has its own server for database storage for example, then the mail request could be run through the same server, effectively requiring the server to support an additional API
 
 ### Use of secrets in `.env` file
 

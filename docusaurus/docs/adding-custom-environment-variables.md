@@ -6,84 +6,104 @@ sidebar_label: Environment Variables
 
 > Note: this feature is available with `react-scripts@0.2.3` and higher.
 
-Your project can consume variables declared in your environment as if they were declared locally in your JS files. By default you will have `NODE_ENV` defined for you, and any other environment variables starting with `REACT_APP_`.
+Your project can consume variables declared in your environment as if they were declared locally in your JS files. By default you will have `NODE_ENV` and `PUBLIC_URL` defined for you, and any other environment variables starting with `REACT_APP_`.
 
-> WARNING: Do not store any secrets (such as private API keys) in your React app!
->
-> Environment variables are embedded into the build, meaning anyone can view them by inspecting your app's files.
+## Key information for using environment variables
 
-**The environment variables are embedded during the build time**. Since Create React App produces a static HTML/CSS/JS bundle, it can’t possibly read them at runtime. To read them at runtime, you would need to load HTML into memory on the server and replace placeholders in runtime, as [described here](title-and-meta-tags.md#injecting-data-from-the-server-into-the-page). Alternatively you can rebuild the app on the server anytime you change them.
+Environment variables are embedded into the code during build, which has a number of consequences
+- All environment variables are visible in the client web page and **cannot** store secret information
+- All `CREATE_REACT_APP_` variables must be defined in **all** build versions to prevent javascript errors being created by webpage Javascript. Build versions would include dev/start, test, build and any configurations specific to your app
+- By default **`.env` file is checked in** by Create React App. It is not included in the default `.gitignore`. This runs contrary to the common practice NOT to check in `.env`
+- The build flow will optimize the build bundle size by removing code that would never be run, based on the values of `NODE_ENV` and any `CREATE_REACT_APP_` variables. This is analogous to `#IFDEF` in the C preprocessor and is often called Tree shaking. The application Javascript is not executed, but it is parsed to find these places where code can be eliminated
+- Custom variables can be referenced in code using `process.env.CREATE_REACT_APP_`. `NODE_ENV` can also be referenced as `process.env.NODE_ENV`, and the value of `NODE_ENV` cannot be changed
+- Custom variables can also be referenced in HTML, the syntax is different. `PUBLIC_URL` is used in the default Create React App setup
 
-> Note: You must create custom environment variables beginning with `REACT_APP_`. Any other variables except `NODE_ENV` will be ignored to avoid accidentally [exposing a private key on the machine that could have the same name](https://github.com/facebook/create-react-app/issues/865#issuecomment-252199527). Changing any environment variables will require you to restart the development server if it is running.
 
-These environment variables will be defined for you on `process.env`. For example, having an environment variable named `REACT_APP_NOT_SECRET_CODE` will be exposed in your JS as `process.env.REACT_APP_NOT_SECRET_CODE`.
+## Example
 
-There is also a built-in environment variable called `NODE_ENV`. You can read it from `process.env.NODE_ENV`. When you run `npm start`, it is always equal to `'development'`, when you run `npm test` it is always equal to `'test'`, and when you run `npm run build` to make a production bundle, it is always equal to `'production'`. **You cannot override `NODE_ENV` manually.** This prevents developers from accidentally deploying a slow development build to production.
+The following is included in the `.env` file located in the project root directory
+``` bash
+CREATE_REACT_APP_USER_VERSION=10
+```
+This will ensure that all of the scripts defined in `package.json` will read the variable
 
-These environment variables can be useful for displaying information conditionally based on where the project is deployed or consuming sensitive data that lives outside of version control.
-
-First, you need to have environment variables defined. For example, let’s say you wanted to consume an environment variable inside a `<form>`:
-
-```jsx
-render() {
-  return (
-    <div>
-      <small>You are running this application in <b>{process.env.NODE_ENV}</b> mode.</small>
-      <form>
-        <input type="hidden" defaultValue={process.env.REACT_APP_NOT_SECRET_CODE} />
-      </form>
-    </div>
-  );
+The following code could be in a React component
+``` jsx
+let userMessage="";
+if ( process.env.CREATE_REACT_APP_USER_VERSION < 10) {
+  if (process.env.NODE_ENV === "debug") {
+    // message seen only by developer
+    console.log("WARNING: check that correct user version has been declared")
+  }
+  userMessage = "Warning: old User version has been defined";
 }
+// userMessage is later displayed to the user in an information component
 ```
 
-During the build, `process.env.REACT_APP_NOT_SECRET_CODE` will be replaced with the current value of the `REACT_APP_NOT_SECRET_CODE` environment variable. Remember that the `NODE_ENV` variable will be set for you automatically.
+## Security and secrets
 
-When you load the app in the browser and inspect the `<input>`, you will see its value set to `abcdef`, and the bold text will show the environment provided when using `npm start`:
+There is often a need to protect information, such as encryption keys or API keys. These are often called secrets. Unfortunately, there is **NO** way to
+hide these in web page Javascript. The only way to keep the information secure is for it to be only referenced in the server, and for it not to be checked into any
+publicly accessible repository.
 
-<!-- prettier-ignore-start -->
+### Example
 
-```html
-<div>
-  <small>You are running this application in <b>development</b> mode.</small>
-  <form>
-    <input type="hidden" value="abcdef" />
-  </form>
-</div>
+It is likely that a web page might want to use an email service to send email to the maintainer (uncaught JS error event), the owner (contact message) or to an email list.
+
+Most email services require some form of password or API key to access. The API key is issued specifically to the web page owner with intent of linking to a payment account or to limit usage to prevent Denial of Service attacks. If the API is a RESTful API, then the web page can issue a web request directly to the API URL. A URL might look like
 ```
-
-<!-- prettier-ignore-end -->
-
-The above form is looking for a variable called `REACT_APP_NOT_SECRET_CODE` from the environment. In order to consume this value, we need to have it defined in the environment. This can be done using two ways: either in your shell or in a `.env` file. Both of these ways are described in the next few sections.
-
-Having access to the `NODE_ENV` is also useful for performing actions conditionally:
-
-```js
-if (process.env.NODE_ENV !== 'production') {
-  analytics.disable();
-}
+www.amazingEmail.com/api/v5/user=ReactMan&operation=sendMail&API_KEY="ajsdh12jhg45b39"&message=hello
 ```
+It is possible that a web crawler could extract the API_KEY and use it for its own mail sending, leaving the web site owner to pay the bill or be accused of a denial of service attack
 
-When you compile the app with `npm run build`, the minification step will strip out this condition, and the resulting bundle will be smaller.
+Instead, a cloud function(lambda) service is created, that only adds the API_KEY and accesses the email server. When the function is deployed to the (cloud) service, a vendor specific mechanism is used to create API_KEY. This value cannot be read by programs other than the function and is not checked into source control 
 
-## Referencing Environment Variables in the HTML
-
-> Note: this feature is available with `react-scripts@0.9.0` and higher.
-
-You can also access the environment variables starting with `REACT_APP_` in the `public/index.html`. For example:
-
-```html
-<title>%REACT_APP_WEBSITE_NAME%</title>
+A request from the web page would then use the following URL
 ```
+www.cloudService.ReactManFunctionABC.com/operation=sendMail&message=hello
+```
+In response, the service would check that the request originated from the owner's web page and then issue the request to the email server with appropriate header
+settings and adding the API_KEY.  
+```
+www.amazingEmail.com/api/v5/user=ReactMan&operation=sendMail&API_KEY="ajsdh12jhg45b39"&message=hello
+```
+When the email service returns its reply to the function, the reply is then forwarded back to the original web page
 
-Note that the caveats from the above section apply:
+### Access secrets through a server
 
-- Apart from a few built-in variables (`NODE_ENV` and `PUBLIC_URL`), variable names must start with `REACT_APP_` to work.
-- The environment variables are injected at build time. If you need to inject them at runtime, [follow this approach instead](title-and-meta-tags.md#generating-dynamic-meta-tags-on-the-server).
+The previous example uses a cloud function created specifically to hide the secret. This makes sense for static web pages, but if the app already has its own server for database storage for example, then the mail request could be run through the same server
+
+### Use of secrets in `.env` file
+
+In server code, it is standard practice for secrets to be kept in a `.env` file that is not checked into source control (git). For a Node based server, the `dotenv` package is used to read the `.env` file, and variables are accessed as `process.env.VAR_NAME`. `react-scripts` use this `dotenv` mechanism to read in the `.env` file during the build flow
+
+If the server code for your app is stored in the same repo as the React code, then there is a conflict between keeping secrets in a `.env` file and using `CREATE_REACT_APP_` variables defined in `.env`. This must be resolved on a project basis. Possible solutions are
+- set `CREATE_REACT_APP_` variables as part of the script definition in `package.json`. The values must be set in every script
+- separate code for server and React into different subdirectories, adding `server/.env` to the `.gitignore` file. Care must be taken to start the server from the correct directory
+- separate server and client code into different Repos
 
 ## Adding Temporary Environment Variables In Your Shell
 
-Defining environment variables can vary between OSes. It’s also important to know that this manner is temporary for the life of the shell session.
+Defining environment variables can vary between OSes. It’s also important to know that this manner is temporary for the life of the shell session. Don't forget to
+define the value for each possible run (all scripts in `package.json` for example). The following sections give different methods to create temporary environment variables
+
+### Operating system independent
+
+Setting environment variables is a common problem, and the `cross-env` npm package is a robust and effective method to solve the issue
+
+Documentation can be found at [`cross-env`](https://github.com/kentcdodds/cross-env/blob/master/README.md) on github
+
+Example use in `package.json` after adding `cross-env` as a development dependency using `npm` or `yarn`
+```
+"scripts": {
+  "start": "npx cross-env REACT_APP_USER_VERSION=10 react-scripts start",
+  "build: "npx cross-env REACT_APP_USER_VERSION=10 react-scripts build",
+  "test": "eslint --quiet && npx cross-env REACT_APP_USER_VERSION=5 react-scripts test"
+},
+```
+
+Don't forget to define the value for each `scripts` entry
+
 
 ### Windows (cmd.exe)
 
@@ -105,7 +125,7 @@ set "REACT_APP_NOT_SECRET_CODE=abcdef" && npm start
 REACT_APP_NOT_SECRET_CODE=abcdef npm start
 ```
 
-## Adding Development Environment Variables In `.env`
+## Adding Environment Variables In `.env` file
 
 > Note: this feature is available with `react-scripts@0.5.0` and higher.
 
@@ -164,3 +184,27 @@ DOMAIN=www.example.com
 REACT_APP_FOO=$DOMAIN/foo
 REACT_APP_BAR=$DOMAIN/bar
 ```
+
+## Referencing Environment Variables in the HTML
+
+> Note: this feature is available with `react-scripts@0.9.0` and higher.
+
+You can also access the environment variables starting with `REACT_APP_` in the `public/index.html`. For example:
+
+```html
+<title>%REACT_APP_WEBSITE_NAME%</title>
+```
+
+Note that the same restrictions as using environment variables in Javascript apply:
+
+- Apart from a few built-in variables (`NODE_ENV` and `PUBLIC_URL`), variable names must start with `REACT_APP_` to work.
+- The environment variables are injected at build time. If you need to inject them at runtime, [follow this approach instead](title-and-meta-tags.md#generating-dynamic-meta-tags-on-the-server).
+- variables must be defined for every `react-scripts` run 
+
+> WARNING: Do not store any secrets (such as private API keys) in your React app!
+>
+> Environment variables are embedded into the build, meaning anyone can view them by inspecting your app's files.
+
+
+
+

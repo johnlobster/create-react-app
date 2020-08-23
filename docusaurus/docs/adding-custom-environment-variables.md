@@ -6,16 +6,16 @@ sidebar_label: Environment Variables
 
 > Note: this feature is available with `react-scripts@0.2.3` and higher.
 
-Your project can consume variables declared in your environment as if they were declared locally in your JS files. By default you will have `NODE_ENV` and `PUBLIC_URL` defined for you, and any other environment variables starting with `REACT_APP_`.
+Your project can consume variables declared in your environment as if they were declared locally in your JS files. By default you will have `NODE_ENV` and `PUBLIC_URL` defined for you, and your environment variables that start with `REACT_APP_`.
 
 ## Key information for using environment variables
 
 Environment variables are embedded into the code during build, which has a number of consequences
 - All environment variables are visible in the client web page and **cannot** store secret information
-- All `CREATE_REACT_APP_` variables must be defined in **all** build versions to prevent javascript errors being created by webpage Javascript. Build versions would include dev/start, test, build and any configurations specific to your app
+- All `REACT_APP_` variables must be defined in **all** build versions to prevent javascript errors being created by webpage Javascript. Build versions would include dev/start, test, build and any configurations specific to your app
 - By default **`.env` file is checked in** by Create React App. It is not included in the default `.gitignore`. This runs contrary to the common practice NOT to check in `.env`
-- The build flow will optimize the build bundle size by removing code that would never be run, based on the values of `NODE_ENV` and any `CREATE_REACT_APP_` variables. This is analogous to `#IFDEF` in the C preprocessor and is often called Tree shaking. The application Javascript is not executed, but it is parsed to find these places where code can be eliminated
-- Custom variables can be referenced in code using `process.env.CREATE_REACT_APP_`. `NODE_ENV` can also be referenced as `process.env.NODE_ENV`, and the value of `NODE_ENV` cannot be changed
+- The build flow will optimize the build bundle size by removing code that would never be run, based on the values of `NODE_ENV` and any `REACT_APP_` variables. This is analogous to `#IFDEF` in the C preprocessor and is often called Tree shaking. The application Javascript is not executed, but it is parsed to find these places where code can be eliminated
+- Custom variables can be referenced in code using `process.env.REACT_APP_`. `NODE_ENV` can also be referenced as `process.env.NODE_ENV`, and the value of `NODE_ENV` cannot be changed
 - Custom variables can also be referenced in HTML, the syntax is different. `PUBLIC_URL` is used in the default Create React App setup
 
 
@@ -23,14 +23,14 @@ Environment variables are embedded into the code during build, which has a numbe
 
 The following is included in the `.env` file located in the project root directory
 ``` bash
-CREATE_REACT_APP_USER_VERSION=10
+REACT_APP_USER_VERSION=10
 ```
 This will ensure that all of the scripts defined in `package.json` will read the variable
 
 The following code could be in a React component
 ``` jsx
 let userMessage="";
-if ( process.env.CREATE_REACT_APP_USER_VERSION < 10) {
+if ( process.env.REACT_APP_USER_VERSION < 10) {
   if (process.env.NODE_ENV === "debug") {
     // message seen only by developer
     console.log("WARNING: check that correct user version has been declared")
@@ -77,8 +77,8 @@ The previous example uses a cloud function created specifically to hide the secr
 
 In server code, it is standard practice for secrets to be kept in a `.env` file that is not checked into source control (git). For a Node based server, the `dotenv` package is used to read the `.env` file, and variables are accessed as `process.env.VAR_NAME`. `react-scripts` use this `dotenv` mechanism to read in the `.env` file during the build flow
 
-If the server code for your app is stored in the same repo as the React code, then there is a conflict between keeping secrets in a `.env` file and using `CREATE_REACT_APP_` variables defined in `.env`. This must be resolved on a project basis. Possible solutions are
-- set `CREATE_REACT_APP_` variables as part of the script definition in `package.json`. The values must be set in every script
+If the server code for your app is stored in the same repo as the React code, then there is a conflict between keeping secrets in a `.env` file and using `REACT_APP_` variables defined in `.env`. This must be resolved on a project basis. Possible solutions are
+- set `REACT_APP_` variables as part of the script definition in `package.json`. The values must be set in every script
 - separate code for server and React into different subdirectories, adding `server/.env` to the `.gitignore` file. Care must be taken to start the server from the correct directory
 - separate server and client code into different Repos
 
